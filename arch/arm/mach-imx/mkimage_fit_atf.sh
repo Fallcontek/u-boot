@@ -6,7 +6,8 @@
 #
 # usage: $0 <dt_name> [<dt_name> [<dt_name] ...]
 
-[ -z "$BL31" ] && BL31="bl31.bin"
+[ -z "$BINDIR" ] && bindir=$srctree || bindir=$BINDIR
+[ -z "$BL31" ] && BL31="$bindir/bl31.bin"
 [ -z "$TEE_LOAD_ADDR" ] && TEE_LOAD_ADDR="0xfe000000"
 [ -z "$ATF_LOAD_ADDR" ] && ATF_LOAD_ADDR="0x00910000"
 [ -z "$BL33_LOAD_ADDR" ] && BL33_LOAD_ADDR="0x40200000"
