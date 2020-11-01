@@ -95,7 +95,7 @@
 	CONFIG_MFG_ENV_SETTINGS \
 	JAILHOUSE_ENV \
 	BOOTENV	\
-	"fdtfile=undefined\0" \
+	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"ramdisk_addr_r=0x50000000\0"	\
         "fdt_addr_r=0x43000000\0" \
         "fdt_addr=0x43000000\0" \
