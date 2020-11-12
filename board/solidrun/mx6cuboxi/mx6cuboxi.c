@@ -601,11 +601,11 @@ int board_late_init(void)
 	} else {
 		net_random_ethaddr(enetaddr);
                 eth_env_set_enetaddr("ethaddr", enetaddr);
-	}
-#endif
 #ifndef CONFIG_ENV_IS_NOWHERE
 	env_save();
 #endif
+#endif
+	}
 
 board_type:
 
