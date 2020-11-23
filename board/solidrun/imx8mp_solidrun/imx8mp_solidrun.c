@@ -133,9 +133,9 @@ static int setup_fec(void)
 
 #ifdef CONFIG_DWC_ETH_QOS
 
-#define EQOS_RST_PAD IMX_GPIO_NR(4, 22)
+#define EQOS_RST_PAD IMX_GPIO_NR(4, 19)
 static iomux_v3_cfg_t const eqos_rst_pads[] = {
-	MX8MP_PAD_SAI2_RXC__GPIO4_IO22 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX8MP_PAD_SAI1_TXD7__GPIO4_IO19 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
 
 static void setup_iomux_eqos(void)
