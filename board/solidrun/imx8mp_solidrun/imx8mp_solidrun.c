@@ -28,6 +28,9 @@
 #include <mmc.h>
 #include <power/bd71837.h>
 #include <asm/mach-imx/video.h>
+
+#define ONE_GB 0x40000000ULL
+
 DECLARE_GLOBAL_DATA_PTR;
 
 #define UART_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_FSEL1)
@@ -49,6 +52,28 @@ static void setup_gpmi_nand(void)
 	init_nand_clk();
 }
 #endif
+
+int board_phys_sdram_size(phys_size_t *size)
+{
+	unsigned int save1, save2, mirror;
+	volatile unsigned int *ptr;
+	if (!size)
+		return -EINVAL;
+
+	ptr = (volatile unsigned int *)CONFIG_SYS_SDRAM_BASE;
+	save1 = ptr[0];
+	save2 = ptr[ONE_GB/4];
+	ptr[ONE_GB/4] = save1 << 1;
+	ptr[0] = ~save1;
+	mirror = ptr[ONE_GB/4];
+	if (mirror == ~save1)
+		*size = ONE_GB;
+	else
+		*size = 3*ONE_GB;
+	ptr[0] = save1;
+	ptr[ONE_GB/4] = save2;
+	return 0;
+}
 
 int board_early_init_f(void)
 {

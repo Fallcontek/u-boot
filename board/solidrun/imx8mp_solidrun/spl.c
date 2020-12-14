@@ -25,7 +25,11 @@
 #include <mmc.h>
 #include <asm/arch/ddr.h>
 
+#define ONE_GB 0x40000000ULL
 DECLARE_GLOBAL_DATA_PTR;
+
+extern struct dram_timing_info dram_timing_3gb_micron;
+extern struct dram_timing_info dram_timing_1gb_samsung;
 
 int spl_board_boot_device(enum boot_device boot_dev_spl)
 {
@@ -55,7 +59,31 @@ int spl_board_boot_device(enum boot_device boot_dev_spl)
 
 void spl_dram_init(void)
 {
-	ddr_init(&dram_timing);
+	int ret, retrain_1gb;
+	unsigned int save1, save2, mirror;
+	volatile unsigned int *ptr;
+
+	printf ("Training for 3GByte Micron\n");
+	ret = ddr_init(&dram_timing_3gb_micron);
+	retrain_1gb = 0;
+	if (ret == 0) {
+		ptr = (volatile unsigned int *)CONFIG_SYS_SDRAM_BASE;
+		save1 = ptr[0];
+		save2 = ptr[ONE_GB/4];
+		ptr[ONE_GB/4] = save1 << 1;
+		ptr[0] = ~save1;
+		mirror = ptr[ONE_GB/4];
+		if (mirror == ~save1) {
+			retrain_1gb = 1;
+		}
+		ptr[0] = save1;
+		ptr[ONE_GB/4] = save2;
+	} else retrain_1gb = 1;
+
+	if (retrain_1gb) {
+		printf ("Re-training for 1GByte Samsung memory\n");
+		ddr_init(&dram_timing_1gb_samsung);
+	}
 }
 
 #define I2C_PAD_CTRL (PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PE)
