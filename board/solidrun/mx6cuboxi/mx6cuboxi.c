@@ -308,8 +308,60 @@ int board_phy_config(struct phy_device *phydev)
 	return 0;
 }
 
-/* On Cuboxi Ethernet PHY can be located at addresses 0x0 or 0x4 */
-#define ETH_PHY_MASK	((1 << 0x0) | (1 << 0x4))
+
+
+
+#define ADIN1300_MII_EXT_REG_PTR	0x10
+#define ADIN1300_MII_EXT_REG_DATA	0x11
+#define ADIN1300_CLK_CFG_REG		0xff1f
+#define ADIN1300_MII_CONTROL_REG	0x0
+#define ADIN_PHY_ADDR			0x1
+#define ADIN_PHY_ID			0x283bc30
+
+
+/*ADIN1300 PHY - write to MMD registers*/
+int adin_phy_mmd_write(struct phy_device *phydev, int regnum, u16 val)
+{
+	int ret;
+
+	/*write to external pointer register*/
+	ret = phy_write(phydev, MDIO_MMD_VEND1,
+			ADIN1300_MII_EXT_REG_PTR, regnum);
+
+	if (ret)
+		return ret;
+
+	/*write to external data register*/
+	return phy_write(phydev, MDIO_MMD_VEND1,
+			ADIN1300_MII_EXT_REG_DATA, val);
+}
+
+
+/*additional init for ADIN1300 PHY*/
+int eth_init_adin_phy(struct phy_device *phydev)
+{
+	int ret;
+
+
+	/* Configure clock by writing to the clock register
+	 * 0x10 -> GE_CLK_FREE_125_EN
+	 */
+	ret = adin_phy_mmd_write(phydev, ADIN1300_CLK_CFG_REG, 0x10);
+	if (ret)
+		return ret;
+
+	/* Do SW reset by writing to MII control register
+	 * 0x8000 -> SFT_RST
+	 */
+	return phy_write(phydev, MDIO_MMD_VEND1,
+			ADIN1300_MII_CONTROL_REG, 0x8000);
+}
+
+
+/* On Cuboxi Ethernet PHY can be located at addresses 0x0 or 0x4
+ * Update: ADIN PHY is located at address 0x1.
+ */
+#define ETH_PHY_MASK	((1 << 0x0) | (1 << 0x4) | (1 << ADIN_PHY_ADDR))
 
 int board_eth_init(bd_t *bis)
 {
@@ -330,6 +382,13 @@ int board_eth_init(bd_t *bis)
 	if (!bus)
 		return -EINVAL;
 
+	/* Add a 20ms delay before searching for phy devices.
+	 * ADIN PHY needs a delay before attempting to read the PHY registers.
+	 * Without this delay, PHY register read will result in 0,
+	 * thus, the phy id will be read as 0.
+	 */
+	mdelay(20);
+
 	phydev = phy_find_by_mask(bus, ETH_PHY_MASK, PHY_INTERFACE_MODE_RGMII);
 	if (!phydev) {
 		ret = -EINVAL;
@@ -340,6 +399,17 @@ int board_eth_init(bd_t *bis)
 	ret = fec_probe(bis, -1, IMX_FEC_BASE, bus, phydev);
 	if (ret)
 		goto free_phydev;
+
+
+	/* If this board has a ADIN1300 PHY,
+	 * additional configurations are required
+	 */
+	if (phydev->phy_id == ADIN_PHY_ID) {
+		ret = eth_init_adin_phy(phydev);
+		if (ret)
+			goto free_phydev;
+	}
+
 
 	return 0;
 
