@@ -1,4 +1,6 @@
 /*
+ * Copyright (C) 2022 Josua Mayer <josua@solid-run.com>
+ *
  * Copyright (C) 2015 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
@@ -36,6 +38,8 @@
 #include <spl.h>
 #include <usb.h>
 #include <usb/ehci-ci.h>
+#include <netdev.h>
+#include <phy.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -363,6 +367,8 @@ int eth_init_adin_phy(struct phy_device *phydev)
  */
 #define ETH_PHY_MASK	((1 << 0x0) | (1 << 0x4) | (1 << ADIN_PHY_ADDR))
 
+static int phy_addr = -ENOENT;
+
 int board_eth_init(bd_t *bis)
 {
 	struct iomuxc *const iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
@@ -394,6 +400,7 @@ int board_eth_init(bd_t *bis)
 		ret = -EINVAL;
 		goto free_bus;
 	}
+	phy_addr = phydev->addr;
 
 	debug("using phy at address %d\n", phydev->addr);
 	ret = fec_probe(bis, -1, IMX_FEC_BASE, bus, phydev);
@@ -651,6 +658,73 @@ int checkboard(void)
 
 out:
 	return 0;
+}
+
+static int find_ethernet_phy(void)
+{
+	return phy_addr;
+}
+
+#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+/*
+ * Configure the correct ethernet PHYs nodes in device-tree:
+ * - AR8035 at addresses 0 or 4: Cubox
+ * - AR8035 at address 0: HummingBoard, HummingBoard 2
+ * - ADIN1300 at address 1: since SoM rev 1.9
+ */
+int ft_board_setup(void *fdt, bd_t *bd)
+{
+	int node_phy0, node_phy1, node_phy4;
+	int ret, phy;
+	bool enable_phy0 = false, enable_phy1 = false, enable_phy4 = false;
+
+	// detect device
+	enum board_type board = board_type();
+
+	// detect phy
+	phy = find_ethernet_phy();
+	if (phy == 0 || phy == 4) {
+		enable_phy0 = true;
+		switch (board) {
+		case HUMMINGBOARD:
+		case HUMMINGBOARD2:
+			/* atheros phy may appear only at address 0 */
+			break;
+		case CUBOXI:
+		case UNKNOWN:
+		default:
+			/* atheros phy may appear at either address 0 or 4 */
+			enable_phy4 = true;
+		}
+	} else if (phy == 1) {
+		enable_phy1 = true;
+	} else {
+		pr_err("%s: couldn't detect ethernet phy, not patching dtb!\n", __func__);
+		return 0;
+	}
+
+	// update all phy nodes status
+	node_phy0 = fdt_path_offset(fdt, "/soc/bus@2100000/ethernet@2188000/mdio/ethernet-phy@0");
+	ret = fdt_setprop_string(fdt, node_phy0, "status", enable_phy0 ? "okay" : "disabled");
+	if (ret < 0 && enable_phy0)
+		pr_err("%s: failed to enable ethernet phy at address 0 in dtb!\n", __func__);
+	node_phy1 = fdt_path_offset(fdt, "/soc/bus@2100000/ethernet@2188000/mdio/ethernet-phy@1");
+	ret = fdt_setprop_string(fdt, node_phy1, "status", enable_phy1 ? "okay" : "disabled");
+	if (ret < 0 && enable_phy1)
+		pr_err("%s: failed to enable ethernet phy at address 1 in dtb!\n", __func__);
+	node_phy4 = fdt_path_offset(fdt, "/soc/bus@2100000/ethernet@2188000/mdio/ethernet-phy@4");
+	ret = fdt_setprop_string(fdt, node_phy4, "status", enable_phy4 ? "okay" : "disabled");
+	if (ret < 0 && enable_phy4)
+		pr_err("%s: failed to enable ethernet phy at address 4 in dtb!\n", __func__);
+
+	return 0;
+}
+#endif
+
+/* Override the default implementation, DT model is not accurate */
+int show_board_info(void)
+{
+	return checkboard();
 }
 
 int board_late_init(void)
