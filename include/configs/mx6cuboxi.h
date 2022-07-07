@@ -38,6 +38,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"som_rev=undefined\0" \
 	"has_emmc=undefined\0" \
+	"is_cbi=no\0" \
 	"fdtfile=undefined\0" \
 	"fdt_addr_r=0x18000000\0" \
 	"fdt_addr=0x18000000\0" \
@@ -72,10 +73,12 @@
 			"setenv fdtprefix imx6dl; fi; " \
 		"if test ${som_rev} = V15; then " \
 			"setenv fdtsuffix -som-v15; fi; " \
+		"if test ${is_cbi} = yes; then " \
+			"setenv cbisuffix -cbi; fi; " \
 		"if test ${has_emmc} = yes; then " \
 			"setenv emmcsuffix -emmc; fi; " \
 		"if test ${board_name} = HUMMINGBOARD2 ; then " \
-			"setenv fdtfile ${fdtprefix}-hummingboard2${emmcsuffix}${fdtsuffix}.dtb; fi; " \
+			"setenv fdtfile ${fdtprefix}-hummingboard2${cbisuffix}${emmcsuffix}${fdtsuffix}.dtb; fi; " \
 		"if test ${board_name} = HUMMINGBOARD ; then " \
 			"setenv fdtfile ${fdtprefix}-hummingboard${emmcsuffix}${fdtsuffix}.dtb; fi; " \
 		"if test ${board_name} = CUBOXI ; then " \
