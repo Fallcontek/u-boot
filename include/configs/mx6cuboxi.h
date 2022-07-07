@@ -101,6 +101,7 @@
 	"initrd_high=0xffffffff\0" \
 	"fdt_high=0xffffffff\0" \
 	"ip_dyn=yes\0" \
+	"is_cbi=no\0" \
 	"console=" CONSOLE_DEV ",115200\0" \
 	"bootm_size=0x10000000\0" \
 	"mmcdev=" __stringify(CONFIG_SYS_MMC_ENV_DEV) "\0" \
@@ -125,10 +126,12 @@
 			"setenv fdtprefix imx6dl; fi; " \
 		"if test ${som_rev} = V15; then " \
 			"setenv fdtsuffix -som-v15; fi; " \
+		"if test ${is_cbi} = yes; then " \
+			"setenv cbisuffix -cbi; fi; " \
 		"if test ${has_emmc} = yes; then " \
 			"setenv emmcsuffix -emmc; fi; " \
 		"if test ${board_name} = HUMMINGBOARD2 ; then " \
-			"setenv fdtfile ${fdtprefix}-hummingboard2${emmcsuffix}${fdtsuffix}.dtb; fi; " \
+			"setenv fdtfile ${fdtprefix}-hummingboard2${cbisuffix}${emmcsuffix}${fdtsuffix}.dtb; fi; " \
 		"if test ${board_name} = HUMMINGBOARD ; then " \
 			"setenv fdtfile ${fdtprefix}-hummingboard${emmcsuffix}${fdtsuffix}.dtb; fi; " \
 		"if test ${board_name} = CUBOXI ; then " \
